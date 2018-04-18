@@ -1,0 +1,73 @@
+* { margin: 0; }
+
+#app { height: 100vh; font-family: 'Avenir', Helvetica, Arial, sans-serif; }
+
+.fruits__main { display: -ms-flexbox; display: flex; }
+
+.fruits__main p { margin-right: 20px; }
+
+.timer-container, .try-again, .game-play, .intro { opacity: 0; visibility: hidden; }
+
+.show { opacity: 1; visibility: visible; }
+
+.intro { position: absolute; display: -ms-flexbox; display: flex; -ms-flex-direction: column; flex-direction: column; -ms-flex-pack: center; justify-content: center; -ms-flex-align: center; align-items: center; width: 100%; height: 100%; text-align: center; z-index: 2; background-color: #ffffff; }
+
+.intro a { display: block; text-decoration: none; color: green; }
+
+.intro h1 { font-size: 80px; text-transform: uppercase; }
+
+.intro .whos-playing { margin: 50px 0; }
+
+canvas { position: absolute; top: 0; left: 0; }
+
+.game-play { position: relative; padding: 10px 20px; height: 100vh; }
+
+.game-play__header { display: -ms-flexbox; display: flex; -ms-flex-pack: justify; justify-content: space-between; -ms-flex-align: center; align-items: center; }
+
+.game-play__header h2, .game-play__header .game-light, .game-play__header .player-score { width: calc(100% / 3); }
+
+.game-play__header .player-score { text-align: right; }
+
+.game-play .fruits { position: relative; width: 100%; height: 100%; }
+
+.game-play .fruits__chosen, .game-play .fruits__main { position: absolute; width: 100%; height: 100%; top: 0; left: 0; transition: .7s; }
+
+.game-play .fruits__chosen ul, .game-play .fruits__main ul { display: -ms-flexbox; display: flex; -ms-flex-pack: center; justify-content: center; -ms-flex-align: center; align-items: center; -ms-flex-wrap: nowrap; flex-wrap: nowrap; padding-left: 0; width: 100%; height: 100%; transform: translateY(-75px); }
+
+.game-play .fruits__chosen .fruit, .game-play .fruits__main .fruit { width: 100px; height: 100px; list-style: none; }
+
+.game-play .fruits__chosen .fruit.correct, .game-play .fruits__main .fruit.correct { position: relative; }
+
+.game-play .fruits__chosen .fruit.correct:after, .game-play .fruits__main .fruit.correct:after { content: ''; position: absolute; height: 20px; width: 20px; bottom: 0; left: 50%; transform: translate(-50%, 30px); background: green; border-radius: 50%; box-shadow: 0 0 5px green; }
+
+.game-play .fruits__chosen .fruit.incorrect, .game-play .fruits__main .fruit.incorrect { position: relative; }
+
+.game-play .fruits__chosen .fruit.incorrect:after, .game-play .fruits__main .fruit.incorrect:after { content: ''; position: absolute; height: 20px; width: 20px; bottom: 0; left: 50%; transform: translate(-50%, 30px); background: red; border-radius: 50%; box-shadow: 0 0 5px red; }
+
+.game-play .fruits__chosen .fruit--apple, .game-play .fruits__main .fruit--apple { background-color: red; }
+
+.game-play .fruits__chosen .fruit--celery, .game-play .fruits__main .fruit--celery { background-color: green; }
+
+.game-play .fruits__chosen .fruit--banana, .game-play .fruits__main .fruit--banana { background-color: yellow; }
+
+.game-play .fruits__chosen .fruit--blueberry, .game-play .fruits__main .fruit--blueberry { background-color: blue; }
+
+.game-play .game-light { width: 50px; height: 50px; border-radius: 50%; background: red; box-shadow: 0 0 5px red; transition: .7s; }
+
+.game-play .game-light.play { background: green; box-shadow: 0 0 5px green; }
+
+.timer-container { position: absolute; display: -ms-flexbox; display: flex; -ms-flex-pack: center; justify-content: center; -ms-flex-align: center; align-items: center; width: 100%; height: 100%; top: 0; left: 0; }
+
+.timer-container h2 { font-size: 50px; }
+
+.try-again { position: absolute; display: -ms-flexbox; display: flex; -ms-flex-pack: center; justify-content: center; -ms-flex-align: center; align-items: center; -ms-flex-direction: column; flex-direction: column; width: 100vw; height: 100vh; top: 0; left: 0; z-index: 3; background-color: #ffffff; }
+
+.try-again a { text-decoration: none; color: green; }
+
+.try-again a:last-child { color: red; }
+
+.slideUp-enter-active, .slideUp-leave-active { transition: .5s; }
+
+.slideUp-enter, .slideUp-leave-to { transform: translateY(100%); opacity: 0; }
+
+/*# sourceMappingURL=style.css.map*/

@@ -1,0 +1,72 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Simon Says</title>
+        <link rel="stylesheet" href="_ui/skin/dist/css/style.css">
+        <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/4.12.1/firebase.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.20.4/TweenMax.min.js"></script>
+    </head>
+    <body>
+        <canvas id="canvas"></canvas>
+        <div id="app" v-bind:class="{win: win, lose: lose}">
+            <section class="intro" v-bind:class="{show: !playing}">
+                <h1>Simon Says</h1>
+                <div class="whos-playing">
+                    <p>
+                        Who's playing?
+                    </p>
+                    <input type="text" v-model="player.name" />
+                </div>
+                <a class="button" @click="startGame()" href="#">Lets Do This!</a>
+            </section>
+            <section v-bind:class="{show: playing}" class="game-play">
+                <div class="game-play__header">
+                    <h2> {{ player.name }} </h2>
+                    <div class="game-light" :class="{play: play}"></div>
+                    <div class="player-score">
+                        <h3>High Score: {{ highScore }}</h3>
+                        <p> Player High Score: {{ player.highScore }} </p>
+                        <p> Score: {{ player.score }} </p>
+                    </div>
+                </div>
+                <p>
+                    Round: {{ round }}
+                </p>
+                <div class="timer-container" :class="{show: showTimer}">
+                    <h2>Ready</h2>
+                </div>
+                <div class="fruits">
+                    <div class="fruits__main" :class="{flip: flip, slide: slide}">
+                        <ul>
+                            <li v-for="fruit in newBunch" class="fruit" :class="['fruit--' + fruit]"></li>
+                        </ul>
+                    </div>
+                    <div class="fruits__chosen" :class="{show: play}">
+                        <transition-group name="slideUp" tag="ul">
+                            <li v-for="(fruit, key) in keysPressed" :key="key" class="fruit" :class="['fruit--' + fruit.type + ' ' + fruit.correct]"></li>
+                        </transition-group>
+                    </div>
+                </div>
+            </section>
+            <section class="try-again" v-bind:class="{show: lose && !play}">
+                <a @click="reset('complete')" href="#">Try Again</a>
+                <a @click="reset('quit')" href="#">Quit</a>
+            </section>
+        </div>
+        <script>
+            // Initialize Firebase
+            var config = {
+                apiKey: "AIzaSyA331a-6BlxnEqVb3RLC5o3EjYX2sCfzvk",
+                authDomain: "simon-says-e5079.firebaseapp.com",
+                databaseURL: "https://simon-says-e5079.firebaseio.com",
+                projectId: "simon-says-e5079",
+                storageBucket: "",
+                messagingSenderId: "861363499770"
+            };
+            firebase.initializeApp(config);
+        </script>
+        <script src="app.js"></script>
+        <script src="_ui/skin/dist/js/main.bundle.js"></script>
+    </body>
+</html>
