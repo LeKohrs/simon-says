@@ -2,6 +2,10 @@
 
 #app { height: 100vh; font-family: 'Avenir', Helvetica, Arial, sans-serif; }
 
+#app:after { content: ''; position: absolute; left: 0; top: 0; background-color: rgba(127, 2, 10, 0); opacity: .7; width: 100vw; height: 100vh; transition: .7s; }
+
+#app.lose:after { background-color: #7f020a; }
+
 .fruits__main { display: -ms-flexbox; display: flex; }
 
 .fruits__main p { margin-right: 20px; }

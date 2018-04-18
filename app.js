@@ -1,446 +1,292 @@
 const dbRefLightObject = firebase.database().ref().child("lights");
 const dbRefPlayerObject = firebase.database().ref().child("player");
-// === CONFIGURATION ===
-console.log('fire!');
-// Base firework acceleration.
-// 1.0 causes fireworks to travel at a constant speed.
-// Higher number increases rate firework accelerates over time.
-const FIREWORK_ACCELERATION = 1.05;
-// Minimum firework brightness.
-const FIREWORK_BRIGHTNESS_MIN = 50;
-// Maximum firework brightness.
-const FIREWORK_BRIGHTNESS_MAX = 70;
-// Base speed of fireworks.
-const FIREWORK_SPEED = 5;
-// Base length of firework trails.
-const FIREWORK_TRAIL_LENGTH = 3;
-// Determine if target position indicator is enabled.
-const FIREWORK_TARGET_INDICATOR_ENABLED = true;
-
-// Minimum particle brightness.
-const PARTICLE_BRIGHTNESS_MIN = 50;
-// Maximum particle brightness.
-const PARTICLE_BRIGHTNESS_MAX = 80;
-// Base particle count per firework.
-const PARTICLE_COUNT = 100;
-// Minimum particle decay rate.
-const PARTICLE_DECAY_MIN = 0.015;
-// Maximum particle decay rate.
-const PARTICLE_DECAY_MAX = 0.03;
-// Base particle friction.
-// Slows the speed of particles over time.
-const PARTICLE_FRICTION = 0.95;
-// Base particle gravity.
-// How quickly particles move toward a downward trajectory.
-const PARTICLE_GRAVITY = 0.7;
-// Variance in particle coloration.
-const PARTICLE_HUE_VARIANCE = 20;
-// Base particle transparency.
-const PARTICLE_TRANSPARENCY = 1;
-// Minimum particle speed.
-const PARTICLE_SPEED_MIN = 1;
-// Maximum particle speed.
-const PARTICLE_SPEED_MAX = 10;
-// Base length of explosion particle trails.
-const PARTICLE_TRAIL_LENGTH = 5;
-
-// Alpha level that canvas cleanup iteration removes existing trails.
-// Lower value increases trail duration.
-const CANVAS_CLEANUP_ALPHA = 0.15;
-// Hue change per loop, used to rotate through different firework colors.
-const HUE_STEP_INCREASE = 0.5;
-
-// Minimum number of ticks per manual firework launch.
-const TICKS_PER_FIREWORK_MIN = 5;
-// Minimum number of ticks between each automatic firework launch.
-const TICKS_PER_FIREWORK_AUTOMATED_MIN = 50;
-// Maximum number of ticks between each automatic firework launch.
-const TICKS_PER_FIREWORK_AUTOMATED_MAX = 100;
-
-// === END CONFIGURATION ===
-
-// === LOCAL VARS ===
-let canvas = document.getElementById('canvas');
-// Set canvas dimensions.
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-// Set the context, 2d in this case.
-let context = canvas.getContext('2d');
-// Firework and particles collections.
-let fireworks = [], particles = [];
-// Mouse coordinates.
-let mouseX, mouseY;
-// Variable to check if mouse is down.
-let isMouseDown = false;
-// Initial hue.
-let hue = 80;
-// Track number of ticks since automated firework.
-let ticksSinceFireworkAutomated = 0;
-// Track number of ticks since manual firework.
-let ticksSinceFirework = 0;
-
-// === END LOCAL VARS ===
-
-// === HELPERS ===
-
-// Use requestAnimationFrame to maintain smooth animation loops.
-// Fall back on setTimeout() if browser support isn't available.
-window.requestAnimFrame = (() => {
-    return 	window.requestAnimationFrame ||
-            window.webkitRequestAnimationFrame ||
-            window.mozRequestAnimationFrame ||
-            function(callback) {
-                window.setTimeout(callback, 1000 / 60);
-            };
+// when animating on canvas, it is best to use requestAnimationFrame instead of setTimeout or setInterval
+// not supported in all browsers though and sometimes needs a prefix, so we need a shim
+window.requestAnimFrame = ( function() {
+	return window.requestAnimationFrame ||
+				window.webkitRequestAnimationFrame ||
+				window.mozRequestAnimationFrame ||
+				function( callback ) {
+					window.setTimeout( callback, 1000 / 60 );
+				};
 })();
+let max = 0;
+// now we will setup our basic variables for the demo
+var canvas = document.getElementById( 'canvas' ),
+		ctx = canvas.getContext( '2d' ),
+		// full screen dimensions
+		cw = window.innerWidth,
+		ch = window.innerHeight,
+		// firework collection
+		fireworks = [],
+		// particle collection
+		particles = [],
+		// starting hue
+		hue = 120,
+		// when launching fireworks with a click, too many get launched at once without a limiter, one launch per 5 loop ticks
+		limiterTotal = 5,
+		limiterTick = 0,
+		// this will time the auto launches of fireworks, one launch per 80 loop ticks
+		timerTotal = 30,
+		timerTick = 0,
+		mousedown = false,
+		// mouse x coordinate,
+		mx,
+		// mouse y coordinate
+		my;
 
-// Get a random number within the specified range.
-function random(min, max) {
-    return Math.random() * (max - min) + min;
+// set canvas dimensions
+canvas.width = cw;
+canvas.height = ch;
+
+// now we are going to setup our function placeholders for the entire demo
+
+// get a random number within a range
+function random( min, max ) {
+	return Math.random() * ( max - min ) + min;
 }
 
-// Calculate the distance between two points.
-function calculateDistance(aX, aY, bX, bY) {
-    let xDistance = aX - bX;
-    let yDistance = aY - bY;
-    return Math.sqrt(Math.pow(xDistance, 2) + Math.pow(yDistance, 2));
+// calculate the distance between two points
+function calculateDistance( p1x, p1y, p2x, p2y ) {
+	var xDistance = p1x - p2x,
+			yDistance = p1y - p2y;
+	return Math.sqrt( Math.pow( xDistance, 2 ) + Math.pow( yDistance, 2 ) );
 }
 
-// === END HELPERS ===
-
-// === EVENT LISTENERS ===
-
-// Track current mouse position within canvas.
-canvas.addEventListener('mousemove', (e) => {
-    mouseX = e.pageX - canvas.offsetLeft
-    mouseY = e.pageY - canvas.offsetTop
-});
-
-// Track when mouse is pressed.
-canvas.addEventListener('mousedown', (e) => {
-    e.preventDefault()
-    isMouseDown = true
-});
-
-// Track when mouse is released.
-canvas.addEventListener('mouseup', (e) => {
-    e.preventDefault()
-    isMouseDown = false
-});
-
-// === END EVENT LISTENERS ===
-
-// === PROTOTYPING ===
-
-// Creates a new firework.
-// Path begins at 'start' point and ends and 'end' point.
-function Firework(startX, startY, endX, endY) {
-    console.log('create Firework');
-    // Set current coordinates.
-    this.x = startX;
-    this.y = startY;
-    // Set starting coordinates.
-    this.startX = startX;
-    this.startY = startY;
-    // Set end coordinates.
-    this.endX = endX;
-    this.endY = endY;
-    // Get the distance to the end point.
-    this.distanceToEnd = calculateDistance(startX, startY, endX, endY);
-    this.distanceTraveled = 0;
-    // Create an array to track current trail particles.
-    this.trail = [];
-    // Trail length determines how many trailing particles are active at once.
-    this.trailLength = FIREWORK_TRAIL_LENGTH;
-    // While the trail length remains, add current point to trail list.
-    while(this.trailLength--) {
-        this.trail.push([this.x, this.y]);
-    }
-    // Calculate the angle to travel from start to end point.
-    this.angle = Math.atan2(endY - startY, endX - startX);
-    // Set the speed.
-    this.speed = FIREWORK_SPEED;
-    // Set the acceleration.
-    this.acceleration = FIREWORK_ACCELERATION;
-    // Set the brightness.
-    this.brightness = random(FIREWORK_BRIGHTNESS_MIN, FIREWORK_BRIGHTNESS_MAX);
-    // Set the radius of click-target location.
-    this.targetRadius = 2.5;
+// create firework
+function Firework( sx, sy, tx, ty ) {
+	// actual coordinates
+	this.x = sx;
+	this.y = sy;
+	// starting coordinates
+	this.sx = sx;
+	this.sy = sy;
+	// target coordinates
+	this.tx = tx;
+	this.ty = ty;
+	// distance from starting point to target
+	this.distanceToTarget = calculateDistance( sx, sy, tx, ty );
+	this.distanceTraveled = 0;
+	// track the past coordinates of each firework to create a trail effect, increase the coordinate count to create more prominent trails
+	this.coordinates = [];
+	this.coordinateCount = 3;
+	// populate initial coordinate collection with the current coordinates
+	while( this.coordinateCount-- ) {
+		this.coordinates.push( [ this.x, this.y ] );
+	}
+	this.angle = Math.atan2( ty - sy, tx - sx );
+	this.speed = 2;
+	this.acceleration = 1.05;
+	this.brightness = random( 50, 70 );
+	// circle target indicator radius
+	this.targetRadius = 1;
 }
 
-// Update a firework prototype.
-// 'index' parameter is index in 'fireworks' array to remove, if journey is complete.
-Firework.prototype.update = function(index) {
-    // Remove the oldest trail particle.
-    this.trail.pop();
-    // Add the current position to the start of trail.
-    this.trail.unshift([this.x, this.y]);
+// update firework
+Firework.prototype.update = function( index ) {
+	// remove last item in coordinates array
+	this.coordinates.pop();
+	// add current coordinates to the start of the array
+	this.coordinates.unshift( [ this.x, this.y ] );
 
-    // Animate the target radius indicator.
-    if (FIREWORK_TARGET_INDICATOR_ENABLED) {
-        if(this.targetRadius < 8) {
-            this.targetRadius += 0.3;
-        } else {
-            this.targetRadius = 1;
-        }
-    }
+	// cycle the circle target indicator radius
+	if( this.targetRadius < 8 ) {
+		this.targetRadius += 0.3;
+	} else {
+		this.targetRadius = 1;
+	}
 
-    // Increase speed based on acceleration rate.
-    this.speed *= this.acceleration;
+	// speed up the firework
+	this.speed *= this.acceleration;
 
-    // Calculate current velocity for both x and y axes.
-    let xVelocity = Math.cos(this.angle) * this.speed;
-    let yVelocity = Math.sin(this.angle) * this.speed;
-    // Calculate the current distance travelled based on starting position, current position, and velocity.
-    // This can be used to determine if firework has reached final position.
-    this.distanceTraveled = calculateDistance(this.startX, this.startY, this.x + xVelocity, this.y + yVelocity);
+	// get the current velocities based on angle and speed
+	var vx = Math.cos( this.angle ) * this.speed,
+			vy = Math.sin( this.angle ) * this.speed;
+	// how far will the firework have traveled with velocities applied?
+	this.distanceTraveled = calculateDistance( this.sx, this.sy, this.x + vx, this.y + vy );
 
-    // Check if final position has been reached (or exceeded).
-    if(this.distanceTraveled >= this.distanceToEnd) {
-        // Destroy firework by removing it from collection.
-        fireworks.splice(index, 1);
-        // Create particle explosion at end point.  Important not to use this.x and this.y,
-        // since that position is always one animation loop behind.
-        createParticles(this.endX, this.endY);
-    } else {
-        // End position hasn't been reached, so continue along current trajectory by updating current coordinates.
-        this.x += xVelocity;
-        this.y += yVelocity;
-    }
+	// if the distance traveled, including velocities, is greater than the initial distance to the target, then the target has been reached
+	if( this.distanceTraveled >= this.distanceToTarget ) {
+		createParticles( this.tx, this.ty );
+		// remove the firework, use the index passed into the update function to determine which to remove
+		fireworks.splice( index, 1 );
+	} else {
+		// target not reached, keep traveling
+		this.x += vx;
+		this.y += vy;
+	}
 }
 
-// Draw a firework.
-// Use CanvasRenderingContext2D methods to create strokes as firework paths.
+// draw firework
 Firework.prototype.draw = function() {
-    // Begin a new path for firework trail.
-    context.beginPath();
-    // Get the coordinates for the oldest trail position.
-    let trailEndX = this.trail[this.trail.length - 1][0];
-    let trailEndY = this.trail[this.trail.length - 1][1];
-    // Create a trail stroke from trail end position to current firework position.
-    context.moveTo(trailEndX, trailEndY);
-    context.lineTo(this.x, this.y);
-    // Set stroke coloration and style.
-    // Use hue, saturation, and light values instead of RGB.
-    context.strokeStyle = `hsl(${hue}, 100%, ${this.brightness}%)`;
-    // Draw stroke.
-    context.stroke();
+	ctx.beginPath();
+	// move to the last tracked coordinate in the set, then draw a line to the current x and y
+	ctx.moveTo( this.coordinates[ this.coordinates.length - 1][ 0 ], this.coordinates[ this.coordinates.length - 1][ 1 ] );
+	ctx.lineTo( this.x, this.y );
+	ctx.strokeStyle = 'hsl(' + hue + ', 100%, ' + this.brightness + '%)';
+	ctx.stroke();
 
-    if (FIREWORK_TARGET_INDICATOR_ENABLED) {
-        // Begin a new path for end position animation.
-        context.beginPath();
-        // Create an pulsing circle at the end point with targetRadius.
-        context.arc(this.endX, this.endY, this.targetRadius, 0, Math.PI * 2);
-        // Draw stroke.
-        context.stroke();
-    }
+	ctx.beginPath();
+	// draw the target for this firework with a pulsing circle
+	ctx.arc( this.tx, this.ty, this.targetRadius, 0, Math.PI * 2 );
+	ctx.stroke();
 }
 
-// Creates a new particle at provided 'x' and 'y' coordinates.
-function Particle(x, y) {
-    // Set current position.
-    this.x = x;
-    this.y = y;
-    // To better simulate a firework, set the angle of travel to random value in any direction.
-    this.angle = random(0, Math.PI * 2);
-    // Set friction.
-    this.friction = PARTICLE_FRICTION;
-    // Set gravity.
-    this.gravity = PARTICLE_GRAVITY;
-    // Set the hue to somewhat randomized number.
-    // This gives the particles within a firework explosion an appealing variance.
-    this.hue = random(hue - PARTICLE_HUE_VARIANCE, hue + PARTICLE_HUE_VARIANCE);
-    // Set brightness.
-    this.brightness = random(PARTICLE_BRIGHTNESS_MIN, PARTICLE_BRIGHTNESS_MAX);
-    // Set decay.
-    this.decay = random(PARTICLE_DECAY_MIN, PARTICLE_DECAY_MAX);
-    // Set speed.
-    this.speed = random(PARTICLE_SPEED_MIN, PARTICLE_SPEED_MAX);
-    // Create an array to track current trail particles.
-    this.trail = [];
-    // Trail length determines how many trailing particles are active at once.
-    this.trailLength = PARTICLE_TRAIL_LENGTH;
-    // While the trail length remains, add current point to trail list.
-    while(this.trailLength--) {
-        this.trail.push([this.x, this.y]);
-    }
-    // Set transparency.
-    this.transparency = PARTICLE_TRANSPARENCY;
+// create particle
+function Particle( x, y ) {
+	this.x = x;
+	this.y = y;
+	// track the past coordinates of each particle to create a trail effect, increase the coordinate count to create more prominent trails
+	this.coordinates = [];
+	this.coordinateCount = 5;
+	while( this.coordinateCount-- ) {
+		this.coordinates.push( [ this.x, this.y ] );
+	}
+	// set a random angle in all possible directions, in radians
+	this.angle = random( 0, Math.PI * 2 );
+	this.speed = random( 1, 10 );
+	// friction will slow the particle down
+	this.friction = 0.95;
+	// gravity will be applied and pull the particle down
+	this.gravity = 1;
+	// set the hue to a random number +-50 of the overall hue variable
+	this.hue = random( hue - 50, hue + 50 );
+	this.brightness = random( 50, 80 );
+	this.alpha = 1;
+	// set how fast the particle fades out
+	this.decay = random( 0.015, 0.03 );
 }
 
-// Update a particle prototype.
-// 'index' parameter is index in 'particles' array to remove, if journey is complete.
-Particle.prototype.update = function(index) {
-    // Remove the oldest trail particle.
-    this.trail.pop();
-    // Add the current position to the start of trail.
-    this.trail.unshift([this.x, this.y]);
+// update particle
+Particle.prototype.update = function( index ) {
+	// remove last item in coordinates array
+	this.coordinates.pop();
+	// add current coordinates to the start of the array
+	this.coordinates.unshift( [ this.x, this.y ] );
+	// slow down the particle
+	this.speed *= this.friction;
+	// apply velocity
+	this.x += Math.cos( this.angle ) * this.speed;
+	this.y += Math.sin( this.angle ) * this.speed + this.gravity;
+	// fade out the particle
+	this.alpha -= this.decay;
 
-    // Decrease speed based on friction rate.
-    this.speed *= this.friction;
-    // Calculate current position based on angle, speed, and gravity (for y-axis only).
-    this.x += Math.cos(this.angle) * this.speed;
-    this.y += Math.sin(this.angle) * this.speed + this.gravity;
-
-    // Apply transparency based on decay.
-    this.transparency -= this.decay;
-    // Use decay rate to determine if particle should be destroyed.
-    if(this.transparency <= this.decay) {
-        // Destroy particle once transparency level is below decay.
-        particles.splice(index, 1);
-    }
+	// remove the particle once the alpha is low enough, based on the passed in index
+	if( this.alpha <= this.decay ) {
+		particles.splice( index, 1 );
+	}
 }
 
-// Draw a particle.
-// Use CanvasRenderingContext2D methods to create strokes as particle paths.
+// draw particle
 Particle.prototype.draw = function() {
-    // Begin a new path for particle trail.
-    context.beginPath();
-    // Get the coordinates for the oldest trail position.
-    let trailEndX = this.trail[this.trail.length - 1][0];
-    let trailEndY = this.trail[this.trail.length - 1][1];
-    // Create a trail stroke from trail end position to current particle position.
-    context.moveTo(trailEndX, trailEndY);
-    context.lineTo(this.x, this.y);
-    // Set stroke coloration and style.
-    // Use hue, brightness, and transparency instead of RGBA.
-    context.strokeStyle = `hsla(${this.hue}, 100%, ${this.brightness}%, ${this.transparency})`;
-    context.stroke();
+	ctx. beginPath();
+	// move to the last tracked coordinates in the set, then draw a line to the current x and y
+	ctx.moveTo( this.coordinates[ this.coordinates.length - 1 ][ 0 ], this.coordinates[ this.coordinates.length - 1 ][ 1 ] );
+	ctx.lineTo( this.x, this.y );
+	ctx.strokeStyle = 'hsla(' + this.hue + ', 100%, ' + this.brightness + '%, ' + this.alpha + ')';
+	ctx.stroke();
 }
 
-// === END PROTOTYPING ===
-
-// === APP HELPERS ===
-
-// Cleans up the canvas by removing older trails.
-//
-// In order to smoothly transition trails off the canvas, and to make them
-// appear more realistic, we're using a composite fill.
-// Set the initial composite mode to 'destination-out' to keep content that
-// overlap with the fill we're adding.
-//
-// see: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/globalCompositeOperation
-function cleanCanvas() {
-    // Set 'destination-out' composite mode, so additional fill doesn't remove non-overlapping content.
-    context.globalCompositeOperation = 'destination-out';
-    // Set alpha level of content to remove.
-    // Lower value means trails remain on screen longer.
-    context.fillStyle = `rgba(0, 0, 0, ${CANVAS_CLEANUP_ALPHA})`;
-    // Fill entire canvas.
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    // Reset composite mode to 'lighter', so overlapping particles brighten each other.
-    context.globalCompositeOperation = 'lighter';
+// create particle group/explosion
+function createParticles( x, y ) {
+	// increase the particle count for a bigger explosion, beware of the canvas performance hit with the increased particles though
+	var particleCount = 30;
+	while( particleCount-- ) {
+		particles.push( new Particle( x, y ) );
+	}
 }
-
-// Create particle explosion at 'x' and 'y' coordinates.
-function createParticles(x, y) {
-    // Set particle count.
-    // Higher numbers may reduce performance.
-    let particleCount = PARTICLE_COUNT;
-    while(particleCount--) {
-        // Create a new particle and add it to particles collection.
-        particles.push(new Particle(x, y));
-    }
-}
-
-// Launch fireworks automatically.
-function launchAutomatedFirework() {
-
-    // Determine if ticks since last automated launch is greater than random min/max values.
-    if(ticksSinceFireworkAutomated >= random(TICKS_PER_FIREWORK_AUTOMATED_MIN, TICKS_PER_FIREWORK_AUTOMATED_MAX)) {
-
-      // Check if mouse is not currently clicked.
-      if(!isMouseDown) {
-        // Set start position to bottom center.
-        let startX = canvas.width / 2;
-        let startY = canvas.height;
-        // Set end position to random position, somewhere in the top half of screen.
-        let endX = random(0, canvas.width);
-        let endY = random(0, canvas.height / 2);
-        if(fireworks.length < 5) {
-            // Create new firework and add to collection.
-            console.log(fireworks);
-            fireworks.push(new Firework(startX, startY, endX, endY));
-        }
-        // Reset tick counter.
-        ticksSinceFireworkAutomated = 0;
-      }
-    } else {
-      // Increment counter.
-      ticksSinceFireworkAutomated++;
-    }
-}
-
-// Launch fireworks manually, if mouse is pressed.
-function launchManualFirework() {
-    // Check if ticks since last firework launch is less than minimum value.
-    if(ticksSinceFirework >= TICKS_PER_FIREWORK_MIN) {
-        // Check if mouse is down.
-        if(isMouseDown) {
-            // Set start position to bottom center.
-            let startX = canvas.width / 2;
-            let startY = canvas.height;
-            // Set end position to current mouse position.
-            let endX = mouseX;
-            let endY = mouseY;
-            // Create new firework and add to collection.
-            fireworks.push(new Firework(startX, startY, endX, endY));
-            // Reset tick counter.
-            ticksSinceFirework = 0;
-        }
-    } else {
-        // Increment counter.
-        ticksSinceFirework++;
-    }
-}
-
-// Update all active fireworks.
-function updateFireworks() {
-    // Loop backwards through all fireworks, drawing and updating each.
-    for (let i = fireworks.length - 1; i >= 0; --i) {
-        fireworks[i].draw();
-        fireworks[i].update(i);
-    }
-}
-
-// Update all active particles.
-function updateParticles() {
-    // Loop backwards through all particles, drawing and updating each.
-    for (let i = particles.length - 1; i >= 0; --i) {
-        particles[i].draw();
-        particles[i].update(i);
-    }
-}
-
-// === END APP HELPERS ===
-
-// Primary loop.
+var animation;
+// main demo loop
 function loop() {
-    // Smoothly request animation frame for each loop iteration.
-    requestAnimFrame(loop);
+	// this function will run endlessly with requestAnimationFrame
 
-    // Adjusts coloration of fireworks over time.
-    hue += HUE_STEP_INCREASE;
-
-    // Clean the canvas.
-    cleanCanvas();
-
-    // Update fireworks.
-    updateFireworks();
-
-    // Update particles.
-    updateParticles();
+    animation = requestAnimFrame( loop );
 
 
-    // Launch automated fireworks.
-    launchAutomatedFirework();
+	// increase the hue to get different colored fireworks over time
+	//hue += 0.5;
 
-    // Launch manual fireworks.
-    launchManualFirework();
+    // create random color
+    hue = random(0, 360 );
+
+	// normally, clearRect() would be used to clear the canvas
+	// we want to create a trailing effect though
+	// setting the composite operation to destination-out will allow us to clear the canvas at a specific opacity, rather than wiping it entirely
+	ctx.globalCompositeOperation = 'destination-out';
+	// decrease the alpha property to create more prominent trails
+	ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+	ctx.fillRect( 0, 0, cw, ch );
+	// change the composite operation back to our main mode
+	// lighter creates bright highlight points as the fireworks and particles overlap each other
+	ctx.globalCompositeOperation = 'lighter';
+
+	// loop over each firework, draw it, update it
+	var i = fireworks.length;
+	while( i-- ) {
+		fireworks[ i ].draw();
+		fireworks[ i ].update( i );
+	}
+
+	// loop over each particle, draw it, update it
+	var i = particles.length;
+	while( i-- ) {
+		particles[ i ].draw();
+		particles[ i ].update( i );
+	}
+
+	// launch fireworks automatically to random coordinates, when the mouse isn't down
+    if( timerTick >= timerTotal ) {
+		if( !mousedown ) {
+			// start the firework at the bottom middle of the screen, then set the random target coordinates, the random y coordinates will be set within the range of the top half of the screen
+            if (max < 4) {
+                fireworks.push( new Firework( cw / 2, ch, random( 0, cw ), random( 0, ch / 2 ) ) );
+                max++;
+                timerTick = 0;
+            }
+            else {
+                setTimeout(function() {
+                    cancelAnimationFrame(animation);
+                }, 2000);
+            }
+
+		}
+	} else {
+		timerTick++;
+	}
+
+	// limit the rate at which fireworks get launched when mouse is down
+	if( limiterTick >= limiterTotal ) {
+		if( mousedown ) {
+			// start the firework at the bottom middle of the screen, then set the current mouse coordinates as the target
+			fireworks.push( new Firework( cw / 2, ch, mx, my ) );
+			limiterTick = 0;
+		}
+	} else {
+		limiterTick++;
+	}
 }
 
-// Initiate loop after window loads.
+// mouse event bindings
+// update the mouse coordinates on mousemove
+canvas.addEventListener( 'mousemove', function( e ) {
+	mx = e.pageX - canvas.offsetLeft;
+	my = e.pageY - canvas.offsetTop;
+});
+
+// toggle mousedown state and prevent canvas from being selected
+canvas.addEventListener( 'mousedown', function( e ) {
+	e.preventDefault();
+	mousedown = true;
+});
+
+canvas.addEventListener( 'mouseup', function( e ) {
+	e.preventDefault();
+	mousedown = false;
+});
+
+// once the window loads, we are ready for some fireworks!
 // window.onload = loop;
+
 
 new Vue({
     el:'#app',
@@ -561,7 +407,8 @@ new Vue({
         checkArrays: function(e) {
             if(this.keysPressed.length == this.round) {
                 if(this.arraysEqual(this.keysPressed, this.newBunch)) {
-                    // loop();
+                    max = 0;
+                    loop();
                     this.message = 'GOOD JOB';
                     this.win = true;
                     this.keysPressed[this.keysPressed.length - 1].correct = 'correct';
@@ -731,7 +578,6 @@ new Vue({
             for(let player of this.players) {
                 if (player.name === this.player.name) {
                     this.player.highScore = player.highScore;
-                    // console.log(this.player.highScore);
                 }
             }
         },
@@ -742,9 +588,6 @@ new Vue({
                 }
             }
         },
-        fireworks: function() {
-
-        }
     },
     created() {
         this.getAllPlayers();
