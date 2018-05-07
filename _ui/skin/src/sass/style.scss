@@ -1,0 +1,233 @@
+* {
+    margin: 0;
+}
+#app {
+    height: 100vh;
+    font-family: 'Avenir', Helvetica, Arial, sans-serif;
+
+    &:after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        background-color: rgba(127, 2, 10, 0);
+        opacity: .7;
+        width: 100vw;
+        height: 100vh;
+        transition: .7s;
+    }
+
+    &.lose {
+        &:after {
+            background-color: rgba(127, 2, 10, 1);
+        }
+
+    }
+}
+.mute-button {
+    position: fixed;
+    padding: 10px 20px;
+    bottom: 20px;
+    left: 20px;
+    z-index: 10;
+    border: 1px solid gray;
+    border-radius: 20px;
+    cursor: pointer; 
+    opacity: .1;
+    transition: .3s;
+
+        &:hover {
+            opacity: 1;
+        }
+}
+.fruits__main {
+    display: flex;
+
+    p {
+        margin-right: 20px;
+    }
+}
+.timer-container,
+.try-again,
+.game-play,
+.intro {
+    opacity: 0;
+    visibility: hidden;
+}
+.show {
+    opacity: 1;
+    visibility: visible;
+}
+.intro {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    z-index: 2;
+    background-color: #ffffff;
+
+    a {
+        display: block;
+        text-decoration: none;
+        color: green;
+    }
+    h1 {
+        font-size: 80px;
+        text-transform: uppercase;
+    }
+    .whos-playing {
+        margin: 50px 0;
+    }
+}
+canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+.game-play {
+    position: relative;
+    padding: 10px 20px;
+    height: calc(100vh - 20px);
+
+    &__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        h2,
+        .game-light,
+        .player-score {
+            width: calc(100% / 3);
+        }
+        .player-score {
+            text-align: right;
+        }
+    }
+    .fruits {
+        position: relative;
+        width: 100%;
+        height: calc(100% - 92px);
+    }
+    .fruits__chosen,
+    .fruits__main {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        transition: .7s;
+
+        ul {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: nowrap;
+            padding-left: 0;
+            width: 100%;
+            height: 100%;
+            transform: translateY(-75px);
+        }
+        .fruit {
+            width: 100px;
+            height: 100px;
+            list-style: none;
+
+            &.correct {
+                position: relative;
+
+                &:after {
+                    content: '';
+                    position: absolute;
+                    height: 20px;
+                    width: 20px;
+                    bottom: 0;
+                    left: 50%;
+                    transform: translate(-50%, 30px);
+                    background: green;
+                    border-radius: 50%;
+                    box-shadow:  0 0 5px green;
+                }
+            }
+            &.incorrect {
+                position: relative;
+
+                &:after {
+                    content: '';
+                    position: absolute;
+                    height: 20px;
+                    width: 20px;
+                    bottom: 0;
+                    left: 50%;
+                    transform: translate(-50%, 30px);
+                    background: red;
+                    border-radius: 50%;
+                    box-shadow:  0 0 5px red;
+                }
+            }
+        }
+        .fruit--apple {
+            background-color: red;
+        }
+        .fruit--celery {
+            background-color: green;
+        }
+        .fruit--banana {
+            background-color: yellow;
+        }
+        .fruit--blueberry {
+            background-color: blue;
+        }
+    }
+    .game-light {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: red;
+        box-shadow:  0 0 5px red;
+        transition: .7s;
+
+        &.play {
+            background: green;
+            box-shadow:  0 0 5px green;
+        }
+    }
+}
+.timer-container {
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+
+    h2 {
+        font-size: 50px;
+    }
+}
+.try-again {
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    top: 0;
+    left: 0;
+    z-index: 3;
+    background-color: #ffffff;
+
+    a {
+        text-decoration: none;
+        color: green;
+    }
+    a:last-child {
+        color: red;
+    }
+}
