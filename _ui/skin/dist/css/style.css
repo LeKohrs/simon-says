@@ -6,6 +6,10 @@
 
 #app.lose:after { background-color: #7f020a; }
 
+.mute-button { position: fixed; padding: 10px 20px; bottom: 20px; left: 20px; z-index: 10; border: 1px solid gray; border-radius: 20px; cursor: pointer; opacity: .1; transition: .3s; }
+
+.mute-button:hover { opacity: 1; }
+
 .fruits__main { display: -ms-flexbox; display: flex; }
 
 .fruits__main p { margin-right: 20px; }
@@ -69,9 +73,5 @@ canvas { position: absolute; top: 0; left: 0; }
 .try-again a { text-decoration: none; color: green; }
 
 .try-again a:last-child { color: red; }
-
-.slideUp-enter-active, .slideUp-leave-active { transition: .5s; }
-
-.slideUp-enter, .slideUp-leave-to { transform: translateY(100%); opacity: 0; }
 
 /*# sourceMappingURL=style.css.map*/

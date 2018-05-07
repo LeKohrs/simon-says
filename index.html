@@ -9,7 +9,13 @@
     </head>
     <body>
         <canvas id="canvas"></canvas>
+        <audio class="main-music" loop>
+            <source src="_ui/skin/src/audio/GlassHouse.mp3" type="audio/mpeg">
+        </audio>
         <div id="app" v-bind:class="{win: win, lose: lose}">
+            <div class="mute-button" @click="muteMusic">
+                mute
+            </div>
             <section class="intro" v-bind:class="{show: !playing}">
                 <h1>Simon Says</h1>
                 <div class="whos-playing">

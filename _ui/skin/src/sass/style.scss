@@ -24,6 +24,22 @@
 
     }
 }
+.mute-button {
+    position: fixed;
+    padding: 10px 20px;
+    bottom: 20px;
+    left: 20px;
+    z-index: 10;
+    border: 1px solid gray;
+    border-radius: 20px;
+    cursor: pointer; 
+    opacity: .1;
+    transition: .3s;
+
+        &:hover {
+            opacity: 1;
+        }
+}
 .fruits__main {
     display: flex;
 
@@ -215,11 +231,4 @@ canvas {
     a:last-child {
         color: red;
     }
-}
-.slideUp-enter-active, .slideUp-leave-active {
-  transition: .5s;
-}
-.slideUp-enter, .slideUp-leave-to /* .fade-leave-active below version 2.1.8 */ {
-    transform: translateY(100%);
-    opacity: 0;
 }
